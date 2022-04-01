@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 import socket
-from threading import Thread
+from threading import Thread, Timer
 from typing import Any
+from random import choice
 
 
 class State(Enum):
@@ -18,11 +19,12 @@ class Message:
 
 
 class Process(Thread):
-    def __init__(self, port: str, pid: int, host: str = "127.0.0.1") -> None:
+    def __init__(self, port: int, pid: int, host: str = "127.0.0.1") -> None:
         super().__init__(daemon=True)
-        self._port = port
-        self._pid = pid
-        self._host = host
+        self._port: int = port
+        self._pid: int = pid
+        self._host: str = host
+        self._time_out: int = 5
         self._state: State = State.DO_NOT_WANT
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -49,3 +51,34 @@ class Process(Thread):
     @property
     def sock(self):
         return self._sock
+
+    @property
+    def time_out(self):
+        return self._time_out
+
+    @time_out.setter
+    def time_out(self, new_time: int):
+        self._time_out = new_time
+
+    def init_socket(self):
+        """
+        Binds Process to an adress and starts listening for connections.
+        """
+        self.sock.bind((self.host, self.port))
+        self.sock.listen()
+
+    def run(self):
+        """
+        Overrides Thread run() method.
+        """
+
+        def update_state():
+            rnd_state = choice(list(State))
+            self.state = rnd_state
+
+        while True:
+            t = Timer(self.time_out, update_state)
+            t.start()
+
+    def __repr__(self) -> str:
+        return f"Process(pid={self.pid}, port={self.port}, state={self.state})"
